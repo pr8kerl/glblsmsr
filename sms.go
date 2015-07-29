@@ -12,7 +12,6 @@ import (
 var (
 	sessn   napping.Session
 	headers http.Header
-	debug   bool
 )
 
 type SMSMessage struct {
