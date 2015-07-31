@@ -15,12 +15,12 @@ var (
 )
 
 type SMSMessage struct {
-	Status  string `json:"mobile"`
+	Mobile  string `json:"mobile"`
 	Message string `json:"message"`
 }
 
 type SMSResponse struct {
-	Status  string `json:"status"`
+	Status  int    `json:"status"`
 	Message string `json:"message"`
 }
 
