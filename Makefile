@@ -11,7 +11,7 @@ all: smssndr
 update: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
 
-smssndr: main.go sms.go
+smssndr: main.go util.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
     # binary

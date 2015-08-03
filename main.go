@@ -5,7 +5,6 @@ import (
 	"fmt"
 	flag "github.com/ogier/pflag"
 	"os"
-	"time"
 )
 
 var (
@@ -16,6 +15,11 @@ var (
 	number  string
 	u       string
 	debug   bool
+	server  string = "api.smsglobal.com"
+	uri     string = "/v1/sms/"
+	apikey  string = "b100085ef1a79e5c29e913c9084e0e89"
+	secret  string = "0e0fe8de088bced022726f18cb01e6c5"
+	from    string
 )
 
 func init() {
@@ -23,7 +27,7 @@ func init() {
 	flag.BoolVarP(&debug, "debug", "d", false, "enable debug")
 	flag.StringVarP(&message, "message", "m", "", "the message to be sent")
 	flag.StringVarP(&number, "number", "n", "", "the mobile phone number to send to")
-	flag.StringVarP(&u, "url", "u", "http://localhost:8951", "url of the gosms service")
+	flag.StringVarP(&from, "from", "f", "smsglobal", "string identifier of who is sending the msg")
 
 }
 
@@ -32,7 +36,7 @@ func main() {
 	// commit is set by go build -ldflags in Makefile
 	version = version + commit
 	flag.Parse()
-	u += "/api/sms/"
+	u = "https://" + server + uri
 
 	if number == "" {
 		fmt.Println("required option --number missing.\n")
@@ -44,22 +48,19 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	const tlayout = time.RFC3339
-	t := time.Now()
-	tstamp := t.Format(tlayout)
 
 	if debug {
 		fmt.Println("debug enabled.\n")
 		fmt.Printf("url: %s\n", u)
 		fmt.Printf("number: %s\n", number)
-		message = tstamp + " " + message
 		fmt.Printf("message: %s\n", message)
 	}
 
 	msg := SMSMessage{}
-	msg.Mobile = number
+	msg.Origin = from
+	msg.Destination = number
 	msg.Message = message
-	res := SMSResponse{}
+	res := json.RawMessage{}
 	pload := json.RawMessage{}
 	pload, err := json.Marshal(msg)
 	if err != nil {
@@ -74,7 +75,7 @@ func main() {
 		//		fmt.Printf("%s : %s\n", resp.HttpResponse().Status, resp.RawText())
 		os.Exit(1)
 	}
-	//fmt.Printf("OK : %s\n", res.Message)
+	printResponse(res)
 	fmt.Printf("%s : %s\n", resp.HttpResponse().Status, resp.RawText())
 
 	os.Exit(0)
