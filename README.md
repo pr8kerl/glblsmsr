@@ -13,7 +13,7 @@ Flags:
 
 ## Build
 
-* set GOROOT to point to your go installation
+* set GOROOT in go.env to point to your go installation
 * source go.env
 * make update (to get required dependencies)
 * make
