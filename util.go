@@ -34,13 +34,9 @@ type SMSMessage struct {
 	SharedPool  string `json:"sharedPool"`
 }
 
-/*
-origin	Where the SMS appears to come from. 4-11 characters A-Za-z0-9 if alphanumeric; 4-15 digits if numeric (if set, set sharedPool to null)	string
-destination	Destination mobile number. 4-15 digits	string
-message	The SMS message. If longer than 160 characters (GSM) or 70 characters (Unicode), splits into multiple SMS	string
-campaign	The campaign the message is associated with (optional)	related
-sharedPool	The shared pool to use (if set, set origin to null)	related
-*/
+type SMSResponse struct {
+	Errors []json.RawMessage
+}
 
 type httperr struct {
 	Message string
@@ -51,58 +47,15 @@ type httperr struct {
 	}
 }
 
-// send: 'GET /v1/balance HTTP/1.1\r\nHost: api.smsglobal.com\r\nAccept-Encoding: identity\r\nAccept: application/json\r\nAuthorization: MAC id="27a657ff3aec742ddca08e3d918f9ccd",ts="1372730113",nonce="bacd7eabff1864491e2071b2d3d6ae5f",mac="U8atdR0odGcTtmr2u7yaSvR7C1L1Qf3LjIZlqRn5MlM="\r\nUser-Agent: SMS Python Client\r\n\r\n'
-
-/*
-Authorization header fields
-The value of the header is made up of the following components.
-id
-
-Your API key, issued to you by SMSGlobal. You can create an API key in your MXT account.
-ts
-
-The Unix timestamp of the time you made the request. We allow a slight buffer on this in case of any time sync issues.
-nonce
-
-A randomly generated string of your choice. Ensure it is unique to each request, and no more than 32 characters long.
-To prevent replay attacks, a single nonce can only be used once.
-mac
-
-This is the base 64 encoded hash of the request.
-Calculating the mac hash
-
-The hash is a SHA-256 digest of a concatenation of a series of strings related to the request. The string is:
-Timestamp
-Nonce
-HTTP request method
-HTTP request URI
-HTTP host
-HTTP port
-Optional extra data
-
-Example string for POST to /v1/sms endpoint:
-1325376000\n
-random-string\n
-POST\n
-/v1/sms/\n
-api.smsglobal.com\n
-443\n
-\n
-
-
-
-*/
-
 func init() {
 
 	headers = make(http.Header)
 
 	// REST connection setup
 	tsport = http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
 	clnt = http.Client{Transport: &tsport}
-
 }
 
 func GetAuthHeader() string {
@@ -111,7 +64,6 @@ func GetAuthHeader() string {
 
 	now := time.Now().Unix()
 	tstr := strconv.FormatInt(now, 10)
-	//tstr := fmt.Sprintf("%f", tstamp)
 	nonce := createNonce(now)
 	var buffer bytes.Buffer
 	buffer.WriteString("MAC id=")
@@ -125,8 +77,6 @@ func GetAuthHeader() string {
 	macstr += nonce + "\n"
 	macstr += "POST\n/v1/sms/\napi.smsglobal.com\n443\n\n"
 	mac := computeHmac256(macstr, secret)
-	//	mac := hmac.New(sha256.New, []byte(secret))
-	//	mac.Write([]byte(macstr))
 	buffer.WriteString(fmt.Sprintf("%+q", mac))
 	return buffer.String()
 
@@ -146,10 +96,12 @@ func computeHmac256(message string, secret string) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func PostMsg(u string, pload interface{}, res interface{}) (error, *napping.Response) {
+func PostMsg(url string, payload interface{}, result interface{}) (error, *napping.Response) {
 
 	auth := GetAuthHeader()
-	fmt.Println("auth: ", auth)
+	if debug {
+		fmt.Println("auth: ", auth)
+	}
 	headers.Add("Authorization", auth)
 
 	sessn = napping.Session{
@@ -167,7 +119,7 @@ func PostMsg(u string, pload interface{}, res interface{}) (error, *napping.Resp
 		resp *napping.Response
 	)
 
-	resp, err = sessn.Post(u, &pload, &res, &e)
+	resp, err = sessn.Post(url, &payload, &result, &e)
 
 	if err != nil {
 		return err, resp

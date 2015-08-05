@@ -6,12 +6,12 @@ DEPS   := github.com/ogier/pflag github.com/jmcvetta/napping
 
 COMMIT = $(git log | head -n 1 | cut  -f 2 -d ' ')
 
-all: smssndr
+all: glblsmsr
 
 update: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
 
-smssndr: main.go util.go
+glblsmsr: util.go main.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
     # binary
@@ -24,4 +24,4 @@ windows:
 .PHONY: $(DEPS) clean
 
 clean:
-	rm -f smssndr
+	rm -f glblsmsr

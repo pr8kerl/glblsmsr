@@ -1,25 +1,26 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	flag "github.com/ogier/pflag"
 	"os"
 )
 
 var (
-	version string = "0.1."
-	commit  string = "unset"
-	cfgfile string = "config.json"
 	message string
 	number  string
 	u       string
 	debug   bool
-	server  string = "api.smsglobal.com"
-	uri     string = "/v1/sms/"
-	apikey  string = "b100085ef1a79e5c29e913c9084e0e89"
-	secret  string = "0e0fe8de088bced022726f18cb01e6c5"
+	apikey  string
+	secret  string
 	from    string
+)
+
+const (
+	server   string = "api.smsglobal.com"
+	uri      string = "/v1/sms/"
+	glblkey  string = "GLBLKEY"
+	glblscrt string = "GLBLSCRT"
 )
 
 func init() {
@@ -33,10 +34,7 @@ func init() {
 
 func main() {
 
-	// commit is set by go build -ldflags in Makefile
-	version = version + commit
 	flag.Parse()
-	u = "https://" + server + uri
 
 	if number == "" {
 		fmt.Println("required option --number missing.\n")
@@ -48,6 +46,18 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+	apikey = os.Getenv(glblkey)
+	if apikey == "" {
+		fmt.Println("missing environment variable", glblkey)
+		os.Exit(1)
+	}
+	secret = os.Getenv(glblscrt)
+	if secret == "" {
+		fmt.Println("missing environment variable", glblscrt)
+		os.Exit(1)
+	}
+
+	u = "https://" + server + uri
 
 	if debug {
 		fmt.Println("debug enabled.\n")
@@ -56,27 +66,26 @@ func main() {
 		fmt.Printf("message: %s\n", message)
 	}
 
-	msg := SMSMessage{}
-	msg.Origin = from
-	msg.Destination = number
-	msg.Message = message
-	res := json.RawMessage{}
-	pload := json.RawMessage{}
-	pload, err := json.Marshal(msg)
+	requ := SMSMessage{}
+	resu := SMSResponse{}
+	requ.Origin = from
+	requ.Destination = number
+	requ.Message = message
+
+	err, resp := PostMsg(u, &requ, &resu)
 	if err != nil {
-		fmt.Printf("error marshalling payload : %s\n", err)
+		fmt.Printf("%s : %s\n", resp.HttpResponse().Status, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("msg: %s\n", pload)
-	err, resp := PostMsg(u, &pload, &res)
-	if err != nil {
-		fmt.Printf("err : %s\n", err)
-		//		fmt.Printf("%s : %s\n", resp.HttpResponse().Status, resp.RawText())
-		os.Exit(1)
+	if resp.Status() != 201 {
+		fmt.Printf("ERR %s\n", resp.HttpResponse().Status)
+		printResponse(&resu)
+		os.Exit(resp.Status())
+	} else {
+		head := resp.HttpResponse().Header
+		msgid := head.Get("Location")
+		fmt.Printf("OK %s : %s\n", resp.HttpResponse().Status, msgid)
 	}
-	printResponse(res)
-	fmt.Printf("%s : %s\n", resp.HttpResponse().Status, resp.RawText())
-
 	os.Exit(0)
 }
