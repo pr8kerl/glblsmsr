@@ -15,7 +15,7 @@ glblsmsr: util.go main.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
     # binary
-		GOPATH=$(GOPATH) go build -ldflags "-X main.commit $(COMMIT)" -o $@ -v $^
+		GOPATH=$(GOPATH) go build -o $@ -v $^
 		touch $@
 
 windows:

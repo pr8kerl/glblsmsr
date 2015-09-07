@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	sessn   napping.Session
-	headers http.Header
-	tsport  http.Transport
-	clnt    http.Client
+	sessn          napping.Session
+	headers        http.Header
+	tsport         http.Transport
+	clnt           http.Client
+	allowedMethods map[string]bool
 )
 
 type SMSMessage struct {
@@ -56,11 +57,27 @@ func init() {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
 	clnt = http.Client{Transport: &tsport}
+
+	allowedMethods = map[string]bool{
+		"GET":     true,
+		"POST":    true,
+		"PUT":     true,
+		"PATCH":   true,
+		"DELETE":  true,
+		"OPTIONS": true,
+	}
+
 }
 
-func GetAuthHeader() string {
+func GetAuthHeader(method string, uri string) (error, string) {
 
 	// Authorization: MAC id="your API key", ts="1325376000", nonce="random-string", mac="base64-encoded-hash"
+
+	if !allowedMethods[method] {
+		msg := fmt.Sprintf("invalid method: %v", method)
+		err := errors.New(msg)
+		return err, ""
+	}
 
 	now := time.Now().Unix()
 	tstr := strconv.FormatInt(now, 10)
@@ -75,10 +92,11 @@ func GetAuthHeader() string {
 	buffer.WriteString(", mac=")
 	macstr := tstr + "\n"
 	macstr += nonce + "\n"
-	macstr += "POST\n/v1/sms/\napi.smsglobal.com\n443\n\n"
+	macstr += method + "\n" + uri + "\napi.smsglobal.com\n443\n\n"
 	mac := computeHmac256(macstr, secret)
 	buffer.WriteString(fmt.Sprintf("%+q", mac))
-	return buffer.String()
+
+	return nil, buffer.String()
 
 }
 
@@ -98,7 +116,16 @@ func computeHmac256(message string, secret string) string {
 
 func PostMsg(url string, payload interface{}, result interface{}) (error, *napping.Response) {
 
-	auth := GetAuthHeader()
+	e := httperr{}
+	var (
+		err  error
+		resp *napping.Response
+	)
+
+	err, auth := GetAuthHeader("POST", "/v1/sms/")
+	if err != nil {
+		return err, nil
+	}
 	if debug {
 		fmt.Println("auth: ", auth)
 	}
@@ -113,11 +140,6 @@ func PostMsg(url string, payload interface{}, result interface{}) (error, *nappi
 	//
 	// Send request to server
 	//
-	e := httperr{}
-	var (
-		err  error
-		resp *napping.Response
-	)
 
 	resp, err = sessn.Post(url, &payload, &result, &e)
 
