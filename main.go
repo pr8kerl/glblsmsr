@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	flag "github.com/ogier/pflag"
 	"os"
@@ -37,30 +38,40 @@ func main() {
 	flag.Parse()
 
 	if number == "" {
-		fmt.Println("required option --number missing.\n")
+		fmt.Printf("required option --number missing.\n")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 	if message == "" {
-		fmt.Println("required option --message missing.\n")
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			message += scanner.Text()
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error reading stdin:", err)
+		}
+	}
+	if message == "" {
+		fmt.Printf("no message provided.\n")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
 	apikey = os.Getenv(glblkey)
 	if apikey == "" {
-		fmt.Println("missing environment variable", glblkey)
+		fmt.Printf("missing environment variable %s\n", glblkey)
 		os.Exit(1)
 	}
 	secret = os.Getenv(glblscrt)
 	if secret == "" {
-		fmt.Println("missing environment variable", glblscrt)
+		fmt.Printf("missing environment variable %s\n", glblscrt)
 		os.Exit(1)
 	}
 
 	u = "https://" + server + uri
 
 	if debug {
-		fmt.Println("debug enabled.\n")
+		fmt.Printf("debug enabled.\n")
 		fmt.Printf("url: %s\n", u)
 		fmt.Printf("number: %s\n", number)
 		fmt.Printf("message: %s\n", message)
@@ -85,7 +96,7 @@ func main() {
 	} else {
 		head := resp.HttpResponse().Header
 		msgid := head.Get("Location")
-		fmt.Printf("OK %s : %s\n", resp.HttpResponse().Status, msgid)
+		fmt.Printf("%s %s\n", resp.HttpResponse().Status, msgid)
 	}
 	os.Exit(0)
 }

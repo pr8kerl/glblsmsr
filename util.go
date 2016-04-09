@@ -53,10 +53,10 @@ func init() {
 	headers = make(http.Header)
 
 	// REST connection setup
-	tsport = http.Transport{
+	tsport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
-	clnt = http.Client{Transport: &tsport}
+	clnt = http.Client{Transport: tsport}
 
 	allowedMethods = map[string]bool{
 		"GET":     true,
@@ -130,6 +130,7 @@ func PostMsg(url string, payload interface{}, result interface{}) (error, *nappi
 		fmt.Println("auth: ", auth)
 	}
 	headers.Add("Authorization", auth)
+	headers.Add("Accept", "application/json")
 
 	sessn = napping.Session{
 		Client: &clnt,

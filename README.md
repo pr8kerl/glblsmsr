@@ -36,5 +36,12 @@ OK 201 Created : /v1/sms/1225870233/
 $
 ```
 
+You can also pipe the message in via stdin if you like
+
+```
+$ echo "schön Tag noch" | ./glblsmsr -n 6155555555
+201 Created /v1/sms/1759071884
+```
+
 If you need to use a proxy, set the HTTP_PROXY environment variable appropriately.
 
